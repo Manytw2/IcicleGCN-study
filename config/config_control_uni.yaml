@@ -1,13 +1,13 @@
 batch_size: 32
 cluster_temperature: 1.0
-dataset: control_uni_rayleigh_10
+dataset: control_uni_rayleigh_01
 dataset_dir: ./datasets
 epochs: 200
 feature_dim: 128
 image_size: 224
 instance_temperature: 0.5
 learning_rate: 0.001
-model_path: ./save/control_uni_rayleigh_10
+model_path: ./save/control_uni_rayleigh_01
 reload: false
 resnet: ResNet34
 seed: 42

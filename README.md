@@ -49,6 +49,61 @@ and the final results will be save in file "icicleGCN_result" in TXT format
 
 We uploaded the pretrained model which achieves the performance reported in the paper to the "save_IcicleGCN" folder for reference.
 
+## Running .mat File Experiments
+
+For numerical feature data stored in `.mat` files (such as CMHDC noisy datasets), we provide an automated experiment script that supports:
+
+### Features
+- **Automated workflow**: First stage training → First stage evaluation
+- **Multiple dataset support**: Batch processing of multiple datasets
+- **Error handling**: Automatic error logging and user interaction on failures
+- **Organized output**: All results saved to `experiments_output/` directory
+
+### Usage
+
+#### Single Dataset Experiment
+```bash
+python run_mat_experiments.py --dataset control_uni_rayleigh_01
+```
+
+#### Batch Experiments
+```bash
+python run_mat_experiments.py --batch control_uni_rayleigh_01 control_uni_rayleigh_05 control_uni_rayleigh_10 control_uni_rayleigh_20
+```
+
+#### Interactive Mode (with user prompts on errors)
+```bash
+python run_mat_experiments.py --dataset control_uni_rayleigh_01 --interactive
+```
+
+#### List Available Datasets
+```bash
+python run_mat_experiments.py --list
+```
+
+### Output Structure
+```
+experiments_output/
+├── configs/           # Experiment-specific configuration files
+├── results/           # Experiment results (ACC, NMI, ARI, F1)
+├── error_logs/        # Error logs (if any failures occur)
+├── models/            # Trained model files
+└── README.md          # Directory structure documentation
+```
+
+### Supported Datasets
+- `control_uni_original` - Original dataset
+- `control_uni_gamma_01/05/10/20` - Gamma noise variants
+- `control_uni_rayleigh_01/05/10/20` - Rayleigh noise variants  
+- `control_uni_gaussian_01/05/10/20` - Gaussian noise variants
+- `control_uni_uniform_01/05/10/20` - Uniform noise variants
+
+### Technical Details
+- **Data Format**: `.mat` files with 'X'/'fea'/'data' for features and 'Y'/'gnd'/'labels' for labels
+- **Network Architecture**: `FeatureVectorEncoder` for numerical feature data
+- **Training**: Contrastive learning with Gaussian noise and dropout augmentation
+- **Evaluation**: Clustering performance metrics (ACC, NMI, ARI, F1)
+
 # Dataset
 
 CIFAR-10, CIFAR-100, STL-10 will be automatically downloaded by Pytorch. Tiny-ImageNet can be downloaded from http://cs231n.stanford.edu/tiny-imagenet-200.zip. For ImageNet-10 and ImageNet-dogs, we provided their description in the "dataset" folder.

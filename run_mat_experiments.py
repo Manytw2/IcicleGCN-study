@@ -27,8 +27,11 @@ TRAINING_PARAMS = {
     "reload": False
 }
 
-def create_config_file(dataset_name, config_path="config/config_control_uni.yaml"):
-    """创建配置文件"""
+def create_config_file(dataset_name):
+    """创建专用的配置文件"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    config_path = f"experiments_output/configs/config_{dataset_name}_{timestamp}.yaml"
+    
     config = {
         "seed": 42,
         "workers": 4,
@@ -48,12 +51,17 @@ def create_config_file(dataset_name, config_path="config/config_control_uni.yaml
         "cluster_temperature": 1.0
     }
     
+    # 确保目录存在
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
     
     print(f"[INFO] Created config file: {config_path}")
     print(f"[INFO] Dataset: {dataset_name}")
     print(f"[INFO] Model path: {config['model_path']}")
+    
+    return config_path
 
 def check_dataset_exists(dataset_name):
     """检查数据集文件是否存在"""
@@ -73,8 +81,9 @@ def log_error_to_file(dataset_name, error_type, error_message, stage="unknown"):
     """保存错误信息到日志文件"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # 创建错误日志目录
-    error_dir = "error_logs"
+    # 创建实验输出目录
+    experiments_dir = "experiments_output"
+    error_dir = f"{experiments_dir}/error_logs"
     os.makedirs(error_dir, exist_ok=True)
     
     # 保存错误日志
@@ -91,7 +100,7 @@ def log_error_to_file(dataset_name, error_type, error_message, stage="unknown"):
     print(f"[ERROR_LOG] 错误日志已保存到: {error_filename}")
     return error_filename
 
-def run_training(dataset_name, config_path="config/config_control_uni.yaml"):
+def run_training(dataset_name):
     """运行第一阶段训练"""
     print("\n" + "="*80)
     print(f"[STAGE 1] 第一阶段训练: {dataset_name}")
@@ -103,8 +112,8 @@ def run_training(dataset_name, config_path="config/config_control_uni.yaml"):
     print("  - 聚类损失 + 重构损失")
     print("="*80)
     
-    # 创建配置文件
-    create_config_file(dataset_name, config_path)
+    # 创建专用配置文件
+    config_path = create_config_file(dataset_name)
     
     # 检查数据集
     if not check_dataset_exists(dataset_name):
@@ -113,10 +122,10 @@ def run_training(dataset_name, config_path="config/config_control_uni.yaml"):
     start_time = time.time()
     
     try:
-        # 运行第一阶段训练
-        print(f"[INFO] 执行命令: python train.py")
+        # 运行第一阶段训练，传递配置文件路径
+        print(f"[INFO] 执行命令: python train.py --config {config_path}")
         print(f"[INFO] 配置文件: {config_path}")
-        result = subprocess.run(['python', 'train.py'], 
+        result = subprocess.run(['python', 'train.py', '--config', config_path], 
                               capture_output=True, text=True, timeout=3600)
         
         if result.returncode == 0:
@@ -132,26 +141,26 @@ def run_training(dataset_name, config_path="config/config_control_uni.yaml"):
                 if any(keyword in line for keyword in ['Detected', 'Using', 'Initialized', 'Epoch']):
                     print(f"  {line.strip()}")
             
-            return True
+            return True, config_path
         else:
             print(f"[ERROR] Training failed: {dataset_name}")
             print(f"[ERROR] Error output: {result.stderr}")
             # 保存错误日志
             log_error_to_file(dataset_name, "Training Failed", result.stderr, "第一阶段训练")
-            return False
+            return False, None
             
     except subprocess.TimeoutExpired:
         print(f"[ERROR] Training timeout: {dataset_name}")
         # 保存错误日志
         log_error_to_file(dataset_name, "Training Timeout", "训练超时 (3600秒)", "第一阶段训练")
-        return False
+        return False, None
     except Exception as e:
         print(f"[ERROR] Training exception: {dataset_name} - {e}")
         # 保存错误日志
         log_error_to_file(dataset_name, "Training Exception", str(e), "第一阶段训练")
-        return False
+        return False, None
 
-def run_evaluation(dataset_name, config_path="config/config_control_uni.yaml"):
+def run_evaluation(dataset_name, config_path):
     """运行第一阶段评估"""
     print("\n" + "="*80)
     print(f"[STAGE 1] 第一阶段评估: {dataset_name}")
@@ -176,9 +185,9 @@ def run_evaluation(dataset_name, config_path="config/config_control_uni.yaml"):
     print(f"[INFO] 配置文件已更新: start_epoch = {TRAINING_PARAMS['epochs']}")
     
     try:
-        # 运行第一阶段评估
-        print(f"[INFO] 执行命令: python cluster.py")
-        result = subprocess.run(['python', 'cluster.py'], 
+        # 运行第一阶段评估，传递配置文件路径
+        print(f"[INFO] 执行命令: python cluster.py --config {config_path}")
+        result = subprocess.run(['python', 'cluster.py', '--config', config_path], 
                               capture_output=True, text=True, timeout=300)
         
         if result.returncode == 0:
@@ -240,8 +249,9 @@ def save_results_to_file(dataset_name, metrics, experiment_type="single"):
     """保存实验结果到文件"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # 创建结果目录
-    results_dir = "experiment_results"
+    # 创建实验输出目录
+    experiments_dir = "experiments_output"
+    results_dir = f"{experiments_dir}/results"
     os.makedirs(results_dir, exist_ok=True)
     
     # 保存单个实验结果
@@ -300,11 +310,11 @@ def run_single_experiment_with_prompt(dataset_name):
                 return False
     
     # 运行第一阶段训练
-    training_success = run_training(dataset_name)
+    training_success, config_path = run_training(dataset_name)
     
     if training_success:
         # 运行第一阶段评估
-        metrics = run_evaluation(dataset_name)
+        metrics = run_evaluation(dataset_name, config_path)
         if metrics:
             print("\n" + "="*80)
             print(f"[COMPLETE] 完整实验完成: {dataset_name}")
@@ -331,7 +341,7 @@ def run_single_experiment_with_prompt(dataset_name):
             elif user_choice == 'continue':
                 # 重试评估
                 print(f"[RETRY] 重试评估 {dataset_name}")
-                metrics = run_evaluation(dataset_name)
+                metrics = run_evaluation(dataset_name, config_path)
                 if metrics:
                     save_results_to_file(dataset_name, metrics, "single")
                     return True
@@ -352,9 +362,9 @@ def run_single_experiment_with_prompt(dataset_name):
         elif user_choice == 'continue':
             # 重试训练
             print(f"[RETRY] 重试训练 {dataset_name}")
-            training_success = run_training(dataset_name)
+            training_success, config_path = run_training(dataset_name)
             if training_success:
-                metrics = run_evaluation(dataset_name)
+                metrics = run_evaluation(dataset_name, config_path)
                 if metrics:
                     save_results_to_file(dataset_name, metrics, "single")
                     return True
@@ -375,11 +385,11 @@ def run_single_experiment(dataset_name):
         return False
     
     # 运行第一阶段训练
-    training_success = run_training(dataset_name)
+    training_success, config_path = run_training(dataset_name)
     
     if training_success:
         # 运行第一阶段评估
-        metrics = run_evaluation(dataset_name)
+        metrics = run_evaluation(dataset_name, config_path)
         if metrics:
             print("\n" + "="*80)
             print(f"[COMPLETE] 完整实验完成: {dataset_name}")
@@ -479,7 +489,8 @@ def run_batch_experiments(datasets_list):
     
     # 保存批量实验结果
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_dir = "experiment_results"
+    experiments_dir = "experiments_output"
+    results_dir = f"{experiments_dir}/results"
     os.makedirs(results_dir, exist_ok=True)
     
     batch_filename = f"{results_dir}/batch_experiment_{timestamp}.txt"

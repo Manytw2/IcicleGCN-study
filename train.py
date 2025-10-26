@@ -12,10 +12,11 @@ from utils import MatDataset
 
 def train():
     loss_epoch = 0
+    device = next(model.parameters()).device  # Get the device from model
     for step, ((x_i, x_j), _) in enumerate(data_loader):
         optimizer.zero_grad()
-        x_i = x_i.to('cuda')
-        x_j = x_j.to('cuda')
+        x_i = x_i.to(device)
+        x_j = x_j.to(device)
         z_i, z_j, c_i, c_j, h_i, bar_i,  = model(x_i, x_j)
         loss_instance = criterion_instance(z_i, z_j)
         loss_cluster = criterion_cluster(c_i, c_j)
@@ -33,7 +34,10 @@ def train():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    config = yaml_config_hook("config/config.yaml")
+    parser.add_argument("--config", type=str, default="config/config.yaml", help="Path to config file")
+    args_config = parser.parse_known_args()[0]  # Parse only the config argument first
+    
+    config = yaml_config_hook(args_config.config)
     for k, v in config.items():
         parser.add_argument(f"--{k}", default=v, type=type(v))
     args = parser.parse_args()
@@ -151,7 +155,11 @@ if __name__ == "__main__":
         print(f"Initialized ResNet: {args.resnet}")
     
     model = network.Network(res, args.feature_dim, class_num)
-    model = model.to('cuda')
+    
+    # Check CUDA availability
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"[INFO] Using device: {device}")
+    model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
@@ -166,7 +174,7 @@ if __name__ == "__main__":
         args.start_epoch = checkpoint['epoch'] + 1
 
 
-    loss_device = torch.device("cuda")
+    loss_device = device  # Use the same device as model
     criterion_instance = contrastive_loss.InstanceLoss(args.batch_size, args.instance_temperature, loss_device).to(
         loss_device)
     criterion_cluster = contrastive_loss.ClusterLoss(class_num, args.cluster_temperature, loss_device).to(loss_device)

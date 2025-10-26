@@ -32,7 +32,10 @@ def inference(loader, model, device):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    config = yaml_config_hook("./config/config.yaml")
+    parser.add_argument("--config", type=str, default="./config/config.yaml", help="Path to config file")
+    args_config = parser.parse_known_args()[0]  # Parse only the config argument first
+    
+    config = yaml_config_hook(args_config.config)
     for k, v in config.items():
         parser.add_argument(f"--{k}", default=v, type=type(v))
     args = parser.parse_args()

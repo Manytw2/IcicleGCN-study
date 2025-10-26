@@ -121,6 +121,7 @@ dmypy.json
 # Project specific
 # 实验输出文件
 data/
+experiments_output/
 error_logs/
 experiment_results/
 

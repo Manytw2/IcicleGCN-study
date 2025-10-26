@@ -49,6 +49,61 @@
 
 我们上传了在论文中报告性能的预训练模型到"save_IcicleGCN"文件夹供参考。
 
+## 运行 .mat 文件实验
+
+对于存储在 `.mat` 文件中的数值特征数据（如 CMHDC 噪声数据集），我们提供了自动化实验脚本，支持：
+
+### 功能特性
+- **自动化工作流**：第一阶段训练 → 第一阶段评估
+- **多数据集支持**：批量处理多个数据集
+- **错误处理**：自动错误日志记录和失败时的用户交互
+- **有序输出**：所有结果保存到 `experiments_output/` 目录
+
+### 使用方法
+
+#### 单个数据集实验
+```bash
+python run_mat_experiments.py --dataset control_uni_rayleigh_01
+```
+
+#### 批量实验
+```bash
+python run_mat_experiments.py --batch control_uni_rayleigh_01 control_uni_rayleigh_05 control_uni_rayleigh_10 control_uni_rayleigh_20
+```
+
+#### 交互模式（错误时询问用户）
+```bash
+python run_mat_experiments.py --dataset control_uni_rayleigh_01 --interactive
+```
+
+#### 列出可用数据集
+```bash
+python run_mat_experiments.py --list
+```
+
+### 输出结构
+```
+experiments_output/
+├── configs/           # 实验专用配置文件
+├── results/           # 实验结果 (ACC, NMI, ARI, F1)
+├── error_logs/        # 错误日志（如有失败）
+├── models/            # 训练好的模型文件
+└── README.md          # 目录结构说明文档
+```
+
+### 支持的数据集
+- `control_uni_original` - 原始数据集
+- `control_uni_gamma_01/05/10/20` - Gamma 噪声变体
+- `control_uni_rayleigh_01/05/10/20` - Rayleigh 噪声变体
+- `control_uni_gaussian_01/05/10/20` - Gaussian 噪声变体
+- `control_uni_uniform_01/05/10/20` - Uniform 噪声变体
+
+### 技术细节
+- **数据格式**：`.mat` 文件，包含 'X'/'fea'/'data' 特征和 'Y'/'gnd'/'labels' 标签
+- **网络架构**：`FeatureVectorEncoder` 用于数值特征数据
+- **训练方式**：对比学习配合高斯噪声和dropout增强
+- **评估指标**：聚类性能指标 (ACC, NMI, ARI, F1)
+
 # 数据集
 
 CIFAR-10、CIFAR-100、STL-10将由Pytorch自动下载。Tiny-ImageNet可以从http://cs231n.stanford.edu/tiny-imagenet-200.zip下载。对于ImageNet-10和ImageNet-dogs，我们在"dataset"文件夹中提供了它们的描述。
