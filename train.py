@@ -8,6 +8,7 @@ from util import yaml_config_hook, save_model
 from torch.utils import data
 import cluster
 import torch.nn.functional as F
+from utils import MatDataset
 
 def train():
     loss_epoch = 0
@@ -99,6 +100,34 @@ if __name__ == "__main__":
             transform=transform.Transforms(size=args.image_size, blur=True),
         )
         class_num = 17
+    elif args.dataset.startswith("control_uni"):
+        # Handle control_uni datasets (both original and noisy versions)
+        if args.dataset == "control_uni":
+            mat_file_path = 'datasets/control_uni.mat'
+        else:
+            # For noisy datasets, look in the noisy_datasets folder
+            mat_file_path = f'datasets/CMHDC_noisy_datasets/{args.dataset}.mat'
+        
+        print(f"Loading {args.dataset} dataset from {mat_file_path}")
+        dataset = MatDataset(
+            mat_file_path=mat_file_path,
+            transform=None,
+            augmentation_noise=0.1,
+            augmentation_dropout=0.1
+        )
+        
+        # Get class number from the dataset
+        class_num = len(np.unique(dataset.labels))
+        print(f"Detected {class_num} classes in {args.dataset}")
+        
+        # Check if it's feature vector data
+        if len(dataset.data.shape) == 2:
+            print(f"Detected feature vector data with shape {dataset.data.shape}")
+            input_dim = dataset.data.shape[1]
+            print(f"Using FeatureVectorEncoder for feature vector data (input_dim={input_dim})")
+        else:
+            print(f"Detected image data with shape {dataset.data.shape}")
+            input_dim = None
     else:
         raise NotImplementedError
 
@@ -110,8 +139,17 @@ if __name__ == "__main__":
         drop_last=True,
         num_workers=args.workers,
     )
+    
     # initialize model
-    res = resnet.get_resnet(args.resnet)
+    if args.dataset.startswith("control_uni") and len(dataset.data.shape) == 2:
+        # Use FeatureVectorEncoder for feature vector data
+        res = network.FeatureVectorEncoder(input_dim=input_dim, hidden_dim=256)
+        print(f"Initialized FeatureVectorEncoder with input_dim={input_dim}")
+    else:
+        # Use ResNet for image data
+        res = resnet.get_resnet(args.resnet)
+        print(f"Initialized ResNet: {args.resnet}")
+    
     model = network.Network(res, args.feature_dim, class_num)
     model = model.to('cuda')
 

@@ -33,6 +33,27 @@ class Encoder(nn.Module):
         return z , x_bar
 
 
+class FeatureVectorEncoder(nn.Module):
+    """
+    Feature extractor for feature vector data (non-image data)
+    """
+    def __init__(self, input_dim, hidden_dim=256):
+        super(FeatureVectorEncoder, self).__init__()
+        self.rep_dim = hidden_dim
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.ReLU(),
+        )
+    
+    def forward(self, x):
+        return self.encoder(x)
+
+
 class Network(nn.Module):
     def __init__(self, resnet, feature_dim, class_num):
         super(Network, self).__init__()
