@@ -62,15 +62,16 @@ We uploaded the pretrained model which achieves the performance reported in the 
 
 ## Running .mat File Experiments
 
-For numerical feature data stored in `.mat` files (such as CMHDC noisy datasets), we provide an automated experiment script that supports:
+For numerical feature data stored in `.mat` files (such as CMHDC noisy datasets), we provide an automated experiment script with improved configuration management.
 
 ### Features
 - **Automated workflow**: First stage training → First stage evaluation
-- **Multiple dataset support**: Batch processing of multiple datasets
-- **Error handling**: Automatic error logging and user interaction on failures
-- **Organized output**: All results saved to `experiments_output/` directory
-- **Excel results**: Results saved in Excel format with clear row/column headers
-- **Batch comparison**: Multiple datasets results in one Excel sheet for easy comparison
+- **Smart configuration**: Uses base config files with command-line parameter overrides (no redundant config generation)
+- **Adaptive parameters**: Automatically adjusts batch_size and epochs based on dataset size
+- **Multiple dataset support**: Batch processing with progress tracking
+- **Error handling**: Comprehensive error logging and optional interactive mode
+- **Real-time progress**: Live training progress with epoch counter
+- **Excel output**: Professional results with all clustering metrics (ACC, NMI, ARI, F1)
 
 ### Usage
 
@@ -81,12 +82,21 @@ python run_mat_experiments.py --dataset control_uni_rayleigh_01
 
 #### Batch Experiments
 ```bash
-python run_mat_experiments.py --batch control_uni_rayleigh_01 control_uni_rayleigh_05 control_uni_rayleigh_10 control_uni_rayleigh_20
+# Run multiple specific datasets
+python run_mat_experiments.py --batch control_uni_rayleigh_01 control_uni_rayleigh_05 control_uni_rayleigh_10
+
+# Run predefined noise comparison experiment
+python run_mat_experiments.py --comparison
 ```
 
-#### Interactive Mode (with user prompts on errors)
+#### Interactive Mode (with retry prompts on errors)
 ```bash
 python run_mat_experiments.py --dataset control_uni_rayleigh_01 --interactive
+```
+
+#### Save Configuration (for reproducibility)
+```bash
+python run_mat_experiments.py --dataset control_uni_rayleigh_01 --save-config
 ```
 
 #### List Available Datasets
@@ -97,40 +107,52 @@ python run_mat_experiments.py --list
 ### Output Structure
 ```
 experiments_output/
-├── configs/           # Experiment-specific configuration files
-│   ├── control_uni/   # Control_uni dataset configs
-│   │   ├── train/     # Training configs
-│   │   └── eval/      # Evaluation configs
-│   └── other/         # Other dataset configs
 ├── results/           # Experiment results (Excel format)
 │   ├── {dataset}_{timestamp}.xlsx  # Single experiment results
 │   └── batch_experiment_{timestamp}.xlsx  # Batch experiment results
 ├── error_logs/        # Error logs (if any failures occur)
-├── models/            # Trained model files
-└── README.md          # Directory structure documentation
+└── run_configs/       # Optional saved configurations (with --save-config)
+save/                  # Trained models
+└── {dataset}/         # Model checkpoints for each dataset
 ```
 
+### Configuration Management
+- **Base configs**: Uses `config/config_control_uni.yaml` for control_uni datasets
+- **Parameter override**: Command-line arguments override base config values
+- **No config pollution**: Avoids generating redundant config files
+- **Adaptive settings**:
+  - `test_small`: batch_size=20, epochs=5 (for quick testing)
+  - `control_uni_*`: batch_size=32, epochs=10 (600 samples)
+  - Other datasets: Configurable via TRAINING_PARAMS
+
 ### Excel Output Format
-- **Single experiments**: Individual Excel files with detailed metrics
-- **Batch experiments**: Combined Excel file with two sheets:
-  - `Detailed_Results`: All datasets with ACC, NMI, ARI, F1 metrics
-  - `Summary`: Experiment statistics and success rates
-- **Clear headers**: Dataset, Status, ACC, NMI, ARI, F1, Experiment_Time, Workflow, etc.
+- **Single experiments**: Individual Excel files with:
+  - Dataset name, timestamp, workflow description
+  - Training parameters (epochs, batch_size, learning_rate)
+  - Performance metrics: ACC, NMI, ARI, F1
+- **Batch experiments**: Combined Excel with:
+  - `Detailed_Results` sheet: All datasets with metrics
+  - `Summary` sheet: Statistics and success rates
 
 ### Supported Datasets
-- `control_uni_original` - Original dataset
-- `control_uni_gamma_01/05/10/20` - Gamma noise variants
-- `control_uni_rayleigh_01/05/10/20` - Rayleigh noise variants  
-- `control_uni_gaussian_01/05/10/20` - Gaussian noise variants
-- `control_uni_uniform_01/05/10/20` - Uniform noise variants
+- `test_small` - Quick test dataset (100 samples)
+- `control_uni_original` - Original clean dataset (600 samples)
+- `control_uni_gamma_01/05/10/20` - Gamma noise (1%, 5%, 10%, 20%)
+- `control_uni_rayleigh_01/05/10/20` - Rayleigh noise
+- `control_uni_gaussian_01/05/10/20` - Gaussian noise
+- `control_uni_uniform_01/05/10/20` - Uniform noise
 
-### Technical Details
-- **Data Format**: `.mat` files with 'X'/'fea'/'data' for features and 'Y'/'gnd'/'labels' for labels
-- **Network Architecture**: `FeatureVectorEncoder` for numerical feature data
-- **Training**: Contrastive learning with Gaussian noise and dropout augmentation
-- **Evaluation**: Clustering performance metrics (ACC, NMI, ARI, F1)
-- **Dependencies**: Requires `pandas` and `openpyxl` for Excel output
-- **Configuration**: Dynamic config file generation for each experiment
+### Performance Optimization
+- **Smart batching**: Automatically adjusts batch_size for dataset size
+- **Progress tracking**: Real-time epoch progress display
+- **Efficient training**: 10 epochs for control_uni datasets (reduced from 200)
+- **Fast testing**: 5 epochs for test_small dataset
+
+### Technical Improvements
+- **Robust metric parsing**: Correctly extracts all clustering metrics
+- **Encoding fix**: Handles Windows console encoding properly
+- **Parameter handling**: Properly manages boolean parameters (reload)
+- **Error recovery**: Comprehensive error logging and optional retry
 
 # Dataset
 
