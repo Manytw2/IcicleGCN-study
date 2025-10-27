@@ -166,9 +166,12 @@ def run_training(dataset_name, save_run_config=False):
             '--batch_size', str(params.get('batch_size', TRAINING_PARAMS['batch_size'])),
             '--epochs', str(params.get('epochs', TRAINING_PARAMS['epochs'])),
             '--learning_rate', str(params.get('learning_rate', TRAINING_PARAMS['learning_rate'])),
-            '--start_epoch', str(params.get('start_epoch', TRAINING_PARAMS['start_epoch'])),
-            '--reload', str(params.get('reload', TRAINING_PARAMS['reload']))
+            '--start_epoch', str(params.get('start_epoch', TRAINING_PARAMS['start_epoch']))
         ]
+        
+        # 只在需要 reload 时添加参数
+        if params.get('reload', TRAINING_PARAMS['reload']):
+            cmd.extend(['--reload', 'True'])
         
         print(f"[INFO] 执行命令: {' '.join(cmd)}")
         print(f"[INFO] 基础配置文件: {base_config_path}")
@@ -355,26 +358,24 @@ def run_evaluation(dataset_name, run_id=None):
             output_lines = result.stdout.split('\n')
             metrics = {}
             for line in output_lines:
-                if 'ACC =' in line:
+                # 查找包含所有指标的行
+                if 'NMI =' in line and 'ARI =' in line and 'F =' in line and 'ACC =' in line:
                     try:
-                        metrics['ACC'] = float(line.split('ACC =')[1].strip())
-                    except:
-                        pass
-                elif 'NMI =' in line:
-                    try:
-                        metrics['NMI'] = float(line.split('NMI =')[1].strip())
-                    except:
-                        pass
-                elif 'ARI =' in line:
-                    try:
-                        metrics['ARI'] = float(line.split('ARI =')[1].strip())
-                    except:
-                        pass
-                elif 'F =' in line:
-                    try:
-                        metrics['F1'] = float(line.split('F =')[1].strip())
-                    except:
-                        pass
+                        # 解析格式: NMI = 0.5393 ARI = 0.4444 F = 0.5402 ACC = 0.6217
+                        parts = line.split()
+                        for i in range(0, len(parts)-1, 3):
+                            if parts[i] == 'NMI' and parts[i+1] == '=':
+                                metrics['NMI'] = float(parts[i+2])
+                            elif parts[i] == 'ARI' and parts[i+1] == '=':
+                                metrics['ARI'] = float(parts[i+2])
+                            elif parts[i] == 'F' and parts[i+1] == '=':
+                                metrics['F1'] = float(parts[i+2])
+                            elif parts[i] == 'ACC' and parts[i+1] == '=':
+                                metrics['ACC'] = float(parts[i+2])
+                    except Exception as e:
+                        print(f"[WARNING] 解析指标时出错: {e}")
+                        print(f"[DEBUG] 原始行: {line}")
+                    break  # 找到结果行后就停止
             
             # 显示结果
             if metrics:
