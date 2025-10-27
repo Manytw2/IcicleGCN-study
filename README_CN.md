@@ -15,6 +15,17 @@
 - pyyaml>=5.3.1
 - scikit-learn>=0.23.2
 - cudatoolkit>=11.0
+- pandas>=1.3.0 (用于Excel输出)
+- openpyxl>=3.0.0 (用于Excel文件支持)
+
+## .mat 实验快速设置
+
+要运行 .mat 文件实验，请激活conda环境并安装所需包：
+
+```bash
+conda activate iciclegcn
+conda install pandas openpyxl -y
+```
 
 # 使用方法
 
@@ -58,6 +69,8 @@
 - **多数据集支持**：批量处理多个数据集
 - **错误处理**：自动错误日志记录和失败时的用户交互
 - **有序输出**：所有结果保存到 `experiments_output/` 目录
+- **Excel结果**：结果以Excel格式保存，具有清晰的行列标题
+- **批量对比**：多个数据集结果在一张Excel表格中，便于对比分析
 
 ### 使用方法
 
@@ -85,11 +98,24 @@ python run_mat_experiments.py --list
 ```
 experiments_output/
 ├── configs/           # 实验专用配置文件
-├── results/           # 实验结果 (ACC, NMI, ARI, F1)
+│   ├── control_uni/   # Control_uni 数据集配置
+│   │   ├── train/     # 训练配置
+│   │   └── eval/      # 评估配置
+│   └── other/         # 其他数据集配置
+├── results/           # 实验结果 (Excel格式)
+│   ├── {dataset}_{timestamp}.xlsx  # 单个实验结果
+│   └── batch_experiment_{timestamp}.xlsx  # 批量实验结果
 ├── error_logs/        # 错误日志（如有失败）
 ├── models/            # 训练好的模型文件
 └── README.md          # 目录结构说明文档
 ```
+
+### Excel输出格式
+- **单个实验**：独立的Excel文件，包含详细指标
+- **批量实验**：合并的Excel文件，包含两个工作表：
+  - `Detailed_Results`：所有数据集的ACC、NMI、ARI、F1指标
+  - `Summary`：实验统计信息和成功率
+- **清晰标题**：数据集、状态、ACC、NMI、ARI、F1、实验时间、工作流等
 
 ### 支持的数据集
 - `control_uni_original` - 原始数据集
@@ -103,6 +129,8 @@ experiments_output/
 - **网络架构**：`FeatureVectorEncoder` 用于数值特征数据
 - **训练方式**：对比学习配合高斯噪声和dropout增强
 - **评估指标**：聚类性能指标 (ACC, NMI, ARI, F1)
+- **依赖包**：需要 `pandas` 和 `openpyxl` 用于Excel输出
+- **配置管理**：为每个实验动态生成配置文件
 
 # 数据集
 

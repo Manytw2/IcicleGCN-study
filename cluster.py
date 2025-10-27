@@ -8,6 +8,7 @@ from util import yaml_config_hook
 from modules import resnet, network, transform
 import evaluation
 from torch.utils import data
+from utils import MatDatasetInference
 import copy
 
 
@@ -110,6 +111,25 @@ if __name__ == "__main__":
             transform=transform.Transforms(size=args.image_size).test_transform,
         )
         class_num = 17
+    elif args.dataset.startswith("control_uni"):
+        # Handle control_uni datasets (both original and noisy versions)
+        if args.dataset == "control_uni":
+            mat_file_path = 'datasets/control_uni.mat'
+        else:
+            # For noisy datasets, look in the noisy_datasets folder
+            mat_file_path = f'datasets/CMHDC_noisy_datasets/{args.dataset}.mat'
+        
+        print(f"Loading {args.dataset} dataset from {mat_file_path}")
+        dataset = MatDatasetInference(mat_file_path=mat_file_path)
+        class_num = len(np.unique(dataset.labels))
+        print(f"Detected {class_num} classes in {args.dataset}")
+    elif args.dataset == "test_small":
+        # Handle test dataset
+        mat_file_path = f'datasets/test/{args.dataset}.mat'
+        print(f"Loading {args.dataset} dataset from {mat_file_path}")
+        dataset = MatDatasetInference(mat_file_path=mat_file_path)
+        class_num = len(np.unique(dataset.labels))
+        print(f"Detected {class_num} classes in {args.dataset}")
     else:
         raise NotImplementedError
     data_loader = torch.utils.data.DataLoader(
@@ -120,7 +140,17 @@ if __name__ == "__main__":
         num_workers=args.workers,
     )
 
-    res = resnet.get_resnet(args.resnet)
+    # Initialize model based on dataset type
+    if (args.dataset.startswith("control_uni") or args.dataset == "test_small") and len(dataset.data.shape) == 2:
+        # Use FeatureVectorEncoder for feature vector data
+        input_dim = dataset.data.shape[1]
+        res = network.FeatureVectorEncoder(input_dim=input_dim, hidden_dim=256)
+        print(f"Using FeatureVectorEncoder with input_dim={input_dim}")
+    else:
+        # Use ResNet for image data
+        res = resnet.get_resnet(args.resnet)
+        print(f"Using ResNet: {args.resnet}")
+    
     model = network.Network(res, args.feature_dim, class_num)
     model_fp = os.path.join(args.model_path, "checkpoint_{}.tar".format(args.start_epoch))
     model.load_state_dict(torch.load(model_fp, map_location=device.type)['net'])

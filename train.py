@@ -132,6 +132,29 @@ if __name__ == "__main__":
         else:
             print(f"Detected image data with shape {dataset.data.shape}")
             input_dim = None
+    elif args.dataset == "test_small":
+        # Handle test dataset
+        mat_file_path = f'datasets/test/{args.dataset}.mat'
+        print(f"Loading {args.dataset} dataset from {mat_file_path}")
+        dataset = MatDataset(
+            mat_file_path=mat_file_path,
+            transform=None,
+            augmentation_noise=0.1,
+            augmentation_dropout=0.1
+        )
+        
+        # Get class number from the dataset
+        class_num = len(np.unique(dataset.labels))
+        print(f"Detected {class_num} classes in {args.dataset}")
+        
+        # Check if it's feature vector data
+        if len(dataset.data.shape) == 2:
+            print(f"Detected feature vector data with shape {dataset.data.shape}")
+            input_dim = dataset.data.shape[1]
+            print(f"Using FeatureVectorEncoder for feature vector data (input_dim={input_dim})")
+        else:
+            print(f"Detected image data with shape {dataset.data.shape}")
+            input_dim = None
     else:
         raise NotImplementedError
 
@@ -145,7 +168,7 @@ if __name__ == "__main__":
     )
     
     # initialize model
-    if args.dataset.startswith("control_uni") and len(dataset.data.shape) == 2:
+    if (args.dataset.startswith("control_uni") or args.dataset == "test_small") and len(dataset.data.shape) == 2:
         # Use FeatureVectorEncoder for feature vector data
         res = network.FeatureVectorEncoder(input_dim=input_dim, hidden_dim=256)
         print(f"Initialized FeatureVectorEncoder with input_dim={input_dim}")

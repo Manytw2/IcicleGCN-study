@@ -15,6 +15,17 @@ This is the code for our Pattern Recognition'24 paper "Deep image clustering wit
 - pyyaml>=5.3.1
 - scikit-learn>=0.23.2
 - cudatoolkit>=11.0
+- pandas>=1.3.0 (for Excel output)
+- openpyxl>=3.0.0 (for Excel file support)
+
+## Quick Setup for .mat Experiments
+
+To run .mat file experiments, activate the conda environment and install required packages:
+
+```bash
+conda activate iciclegcn
+conda install pandas openpyxl -y
+```
 
 # Usage
 
@@ -58,6 +69,8 @@ For numerical feature data stored in `.mat` files (such as CMHDC noisy datasets)
 - **Multiple dataset support**: Batch processing of multiple datasets
 - **Error handling**: Automatic error logging and user interaction on failures
 - **Organized output**: All results saved to `experiments_output/` directory
+- **Excel results**: Results saved in Excel format with clear row/column headers
+- **Batch comparison**: Multiple datasets results in one Excel sheet for easy comparison
 
 ### Usage
 
@@ -85,11 +98,24 @@ python run_mat_experiments.py --list
 ```
 experiments_output/
 ├── configs/           # Experiment-specific configuration files
-├── results/           # Experiment results (ACC, NMI, ARI, F1)
+│   ├── control_uni/   # Control_uni dataset configs
+│   │   ├── train/     # Training configs
+│   │   └── eval/      # Evaluation configs
+│   └── other/         # Other dataset configs
+├── results/           # Experiment results (Excel format)
+│   ├── {dataset}_{timestamp}.xlsx  # Single experiment results
+│   └── batch_experiment_{timestamp}.xlsx  # Batch experiment results
 ├── error_logs/        # Error logs (if any failures occur)
 ├── models/            # Trained model files
 └── README.md          # Directory structure documentation
 ```
+
+### Excel Output Format
+- **Single experiments**: Individual Excel files with detailed metrics
+- **Batch experiments**: Combined Excel file with two sheets:
+  - `Detailed_Results`: All datasets with ACC, NMI, ARI, F1 metrics
+  - `Summary`: Experiment statistics and success rates
+- **Clear headers**: Dataset, Status, ACC, NMI, ARI, F1, Experiment_Time, Workflow, etc.
 
 ### Supported Datasets
 - `control_uni_original` - Original dataset
@@ -103,6 +129,8 @@ experiments_output/
 - **Network Architecture**: `FeatureVectorEncoder` for numerical feature data
 - **Training**: Contrastive learning with Gaussian noise and dropout augmentation
 - **Evaluation**: Clustering performance metrics (ACC, NMI, ARI, F1)
+- **Dependencies**: Requires `pandas` and `openpyxl` for Excel output
+- **Configuration**: Dynamic config file generation for each experiment
 
 # Dataset
 

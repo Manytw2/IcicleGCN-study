@@ -65,8 +65,8 @@ class load_data(Dataset):
 
 class MatDataset(Dataset):
     """
-    Dataset class for loading .mat files
-    Supports both image data and feature vectors
+    Dataset class for loading .mat files for training
+    Supports both image data and feature vectors with augmentation
     """
     def __init__(self, mat_file_path, transform=None, augmentation_noise=0.1, augmentation_dropout=0.1):
         """
@@ -164,5 +164,91 @@ class MatDataset(Dataset):
                 x_j = torch.from_numpy(np.array(data_item)).float()
             
             return (x_i, x_j), label
+
+
+class MatDatasetInference(Dataset):
+    """
+    Dataset class for inference - returns single samples without augmentation
+    """
+    def __init__(self, mat_file_path):
+        """
+        Args:
+            mat_file_path: Path to the .mat file
+        """
+        # Load .mat file
+        mat_data = sio.loadmat(mat_file_path)
+        
+        # Extract data - common keys are 'X', 'fea', 'data'
+        if 'X' in mat_data:
+            self.data = mat_data['X']
+        elif 'fea' in mat_data:
+            self.data = mat_data['fea']
+        elif 'data' in mat_data:
+            self.data = mat_data['data']
+        else:
+            raise ValueError("Could not find data in .mat file. Expected keys: 'X', 'fea', or 'data'")
+        
+        # Extract labels - common keys are 'Y', 'gnd', 'labels'
+        if 'Y' in mat_data:
+            self.labels = mat_data['Y'].flatten()
+        elif 'gnd' in mat_data:
+            self.labels = mat_data['gnd'].flatten()
+        elif 'labels' in mat_data:
+            self.labels = mat_data['labels'].flatten()
+        else:
+            # If no labels, create dummy labels
+            self.labels = np.zeros(len(self.data), dtype=int)
+        
+        # Ensure labels are integers starting from 0
+        unique_labels = np.unique(self.labels)
+        label_map = {old_label: new_label for new_label, old_label in enumerate(unique_labels)}
+        self.labels = np.array([label_map[label] for label in self.labels])
+        
+        # Check if data is image data or feature vectors
+        if len(self.data.shape) == 4:  # (N, H, W, C) or (N, C, H, W)
+            self.is_image = True
+            print(f"Inference mode: Image data with shape {self.data.shape}")
+        elif len(self.data.shape) == 2:  # (N, features)
+            self.is_image = False
+            print(f"Inference mode: Feature vector data with shape {self.data.shape}")
+            # Normalize feature vectors to zero mean and unit variance
+            self.data_mean = np.mean(self.data, axis=0)
+            self.data_std = np.std(self.data, axis=0) + 1e-8
+            self.data = (self.data - self.data_mean) / self.data_std
+        else:
+            raise ValueError(f"Unexpected data shape: {self.data.shape}")
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        data_item = self.data[idx]
+        label = self.labels[idx]
+        
+        if self.is_image:
+            # Image data - convert to PIL Image
+            if data_item.max() <= 1.0:
+                data_item = (data_item * 255).astype(np.uint8)
+            else:
+                data_item = data_item.astype(np.uint8)
+            
+            if data_item.shape[-1] in [1, 3]:  # (H, W, C)
+                if data_item.shape[-1] == 1:
+                    data_item = data_item.squeeze(-1)
+                    img = Image.fromarray(data_item, mode='L')
+                else:
+                    img = Image.fromarray(data_item, mode='RGB')
+            else:  # (C, H, W)
+                data_item = np.transpose(data_item, (1, 2, 0))
+                if data_item.shape[-1] == 1:
+                    data_item = data_item.squeeze(-1)
+                    img = Image.fromarray(data_item, mode='L')
+                else:
+                    img = Image.fromarray(data_item, mode='RGB')
+            
+            return img, label
+        else:
+            # Feature vectors - no augmentation for inference
+            return torch.from_numpy(data_item).float(), label
 
 
