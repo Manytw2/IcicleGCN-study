@@ -219,15 +219,24 @@ def run_training(dataset_name, save_run_config=False):
                                     epoch_found = True
                                     break
                         
-                        # 显示进度条（每0.5秒更新一次，避免刷屏）
+                        # 显示进度条（每0.3秒更新一次，更频繁的更新）
                         if epoch_found and current_epoch > 0:
                             current_time = time.time()
-                            if current_time - last_progress_time >= 0.5:
+                            if current_time - last_progress_time >= 0.3:  # 更频繁更新
                                 progress = current_epoch / total_epochs
-                                bar_length = 30
-                                filled_length = int(bar_length * progress)
-                                bar = '=' * filled_length + '-' * (bar_length - filled_length)
-                                print(f"\r[PROGRESS] {current_epoch}/{total_epochs} [{bar}] {progress:.1%}", end='', flush=True)
+                                # 自适应进度条长度，确保在终端中正确显示
+                                try:
+                                    import shutil
+                                    terminal_width = shutil.get_terminal_size().columns
+                                    # 预留空间给其他文本，进度条长度不超过终端宽度的60%
+                                    max_bar_length = min(30, max(20, terminal_width // 3))
+                                except:
+                                    max_bar_length = 30
+                                
+                                filled_length = int(max_bar_length * progress)
+                                bar = '=' * filled_length + '-' * (max_bar_length - filled_length)
+                                # 增强的进度条格式
+                                print(f"\r>>> [PROGRESS] Epoch {current_epoch}/{total_epochs} [{bar}] {progress:.1%} <<<", end='', flush=True)
                                 last_progress_time = current_time
                     except:
                         pass

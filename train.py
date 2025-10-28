@@ -25,7 +25,7 @@ def train():
         loss = loss_instance + loss_cluster + re_loss
         loss.backward()
         optimizer.step()
-        if step % 50 == 0:
+        if step % max(1, len(data_loader) // 4) == 0 or step == len(data_loader) - 1:
             print(
                 f"Step [{step}/{len(data_loader)}]\t   loss_instance: {loss_instance.item()}\t  loss_cluster: {loss_cluster.item()}\t re_loss: {re_loss.item()}\t ")
         loss_epoch += loss.item()
